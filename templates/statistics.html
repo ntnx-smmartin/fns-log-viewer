@@ -12,9 +12,6 @@
         body {
             margin: 20px;
         }
-        h1 {
-            color: #7855FA;
-        }
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -209,30 +206,40 @@
             
             try {
                 const response = await fetch('/api/statistics');
+                
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                
                 const data = await response.json();
                 
+                // Check if there's an error in the response
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
                 // Update stat cards
-                document.getElementById('database-size').textContent = data.database_size_mb.toFixed(2) + ' MB';
-                document.getElementById('table-size').textContent = data.table_size_mb.toFixed(2) + ' MB';
-                document.getElementById('total-records').textContent = formatNumber(data.total_records);
-                document.getElementById('avg-minute').textContent = formatNumber(data.avg_per_minute);
-                document.getElementById('avg-hour').textContent = formatNumber(data.avg_per_hour);
-                document.getElementById('avg-day').textContent = formatNumber(data.avg_per_day);
-                document.getElementById('avg-week').textContent = formatNumber(data.avg_per_week);
-                document.getElementById('avg-month').textContent = formatNumber(data.avg_per_month);
+                document.getElementById('database-size').textContent = (data.database_size_mb || 0).toFixed(2) + ' MB';
+                document.getElementById('table-size').textContent = (data.table_size_mb || 0).toFixed(2) + ' MB';
+                document.getElementById('total-records').textContent = formatNumber(data.total_records || 0);
+                document.getElementById('avg-minute').textContent = formatNumber(data.avg_per_minute || 0);
+                document.getElementById('avg-hour').textContent = formatNumber(data.avg_per_hour || 0);
+                document.getElementById('avg-day').textContent = formatNumber(data.avg_per_day || 0);
+                document.getElementById('avg-week').textContent = formatNumber(data.avg_per_week || 0);
+                document.getElementById('avg-month').textContent = formatNumber(data.avg_per_month || 0);
                 
                 // Update info section
-                document.getElementById('retention-days').textContent = data.retention_days + ' days';
+                document.getElementById('retention-days').textContent = (data.retention_days || 30) + ' days';
                 document.getElementById('cutoff-date').textContent = data.cutoff_date || 'N/A';
                 document.getElementById('oldest-timestamp').textContent = data.oldest_timestamp || 'N/A';
                 document.getElementById('newest-timestamp').textContent = data.newest_timestamp || 'N/A';
-                document.getElementById('table-rows').textContent = formatNumber(data.table_rows);
+                document.getElementById('table-rows').textContent = formatNumber(data.table_rows || 0);
                 
                 document.getElementById('loading').style.display = 'none';
                 document.getElementById('stats-content').style.display = 'block';
             } catch (error) {
                 console.error('Error loading statistics:', error);
-                document.getElementById('loading').textContent = 'Error loading statistics. Please try again.';
+                document.getElementById('loading').innerHTML = 'Error loading statistics: ' + error.message + '<br><button class="refresh-btn" onclick="loadStatistics()" style="margin-top: 10px;">Retry</button>';
             }
         }
 

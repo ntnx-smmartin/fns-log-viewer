@@ -410,8 +410,9 @@ def analytics_by_rule():
 @app.route('/api/statistics')
 def get_statistics():
     """Get database statistics including size and average records per time period"""
-    conn = get_db_connection()
+    conn = None
     try:
+        conn = get_db_connection()
         with conn.cursor() as cursor:
             stats = {}
             
@@ -534,8 +535,30 @@ def get_statistics():
             stats['cutoff_date'] = cutoff_date_str
             
             return jsonify(stats)
+    except Exception as e:
+        # Log the error and return a proper error response
+        import traceback
+        print(f"Error in get_statistics: {e}")
+        traceback.print_exc()
+        return jsonify({
+            'error': str(e),
+            'database_size_mb': 0,
+            'table_size_mb': 0,
+            'total_records': 0,
+            'avg_per_minute': 0,
+            'avg_per_hour': 0,
+            'avg_per_day': 0,
+            'avg_per_week': 0,
+            'avg_per_month': 0,
+            'retention_days': APP_CONFIG.get('days_to_keep_logs', 30),
+            'cutoff_date': None,
+            'oldest_timestamp': None,
+            'newest_timestamp': None,
+            'table_rows': 0
+        }), 500
     finally:
-        conn.close()
+        if conn:
+            conn.close()
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
