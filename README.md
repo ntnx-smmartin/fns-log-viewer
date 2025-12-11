@@ -4,6 +4,59 @@ A simple python flask app for displaying Flow Network Security logs that have be
 ## Requirements
 This assumes that Flow Network Security is set up to send syslogs to a syslog server that is storing the logs in a MySQL-style database that is reachable from where the app is running. This can be local or remote.
 
+## Configuration
+
+### Environment Variables
+
+The application uses environment variables for configuration, particularly for sensitive database credentials. **Never commit credentials to version control.**
+
+1. Copy the example environment file:
+   ```bash
+   cp env.example .env
+   ```
+
+2. Edit `.env` with your actual database credentials:
+   ```bash
+   # Database Configuration
+   FNS_DB_HOST=127.0.0.1
+   FNS_DB_USER=rsyslog
+   FNS_DB_PASSWORD=your_actual_password_here
+   FNS_DB_NAME=Syslog
+   
+   # Application Configuration
+   FNS_DAYS_TO_KEEP_LOGS=30
+   FNS_DEFAULT_TIMEZONE=UTC
+   ```
+
+3. Load environment variables before running the application:
+   ```bash
+   # Option 1: Export manually
+   export FNS_DB_PASSWORD="your_password"
+   export FNS_DB_HOST="127.0.0.1"
+   # ... etc
+   
+   # Option 2: Use a tool like python-dotenv (recommended)
+   # Install: pip install python-dotenv
+   # Then create a .env file and the app will load it automatically
+   ```
+
+   **Note:** If using `python-dotenv`, you'll need to add it to `requirements.txt` and load it in `app.py`. Alternatively, you can source the `.env` file manually:
+   ```bash
+   set -a
+   source .env
+   set +a
+   python3 app.py
+   ```
+
+### Security Note
+
+The `.env` file is excluded from version control via `.gitignore`. **Never commit files containing passwords or other sensitive information.**
+
+**Important:** The `conf/fns-rsyslog.conf` file also contains database credentials. This is a template file for rsyslog configuration. When deploying, ensure you:
+1. Update the password in your actual rsyslog configuration file
+2. Do not commit the actual rsyslog configuration with real credentials to version control
+3. Store rsyslog configuration files securely on the server
+
 ## Parsing the logs.
 
 A sample Flow Network Security log looks like this:

@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FNS Statistics</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Montserrat', sans-serif;
+        }
+        body {
+            margin: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1 {
+            color: #5c2fcb;
+        }
+        .nav-links {
+            margin: 20px 0;
+        }
+        .nav-links a {
+            padding: 10px 20px;
+            color: #6C3483;
+            text-decoration: none;
+            border-radius: 3px;
+            font-weight: 600;
+            margin-right: 10px;
+            border: 2px solid #6C3483;
+            background-color: #f5f5f5;
+        }
+        .nav-links a.active {
+            background-color: #6C3483;
+            color: white;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .stat-card {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .stat-card h3 {
+            margin-top: 0;
+            color: #6C3483;
+            font-size: 14px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #5c2fcb;
+            margin: 10px 0;
+        }
+        .stat-label {
+            color: #666;
+            font-size: 12px;
+        }
+        .info-section {
+            background-color: white;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            padding: 20px;
+            margin-top: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .info-section h2 {
+            margin-top: 0;
+            color: #6C3483;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #eee;
+        }
+        .info-row:last-child {
+            border-bottom: none;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #333;
+        }
+        .info-value {
+            color: #666;
+        }
+        .loading {
+            text-align: center;
+            padding: 40px;
+            font-size: 18px;
+            color: #666;
+        }
+        .refresh-btn {
+            padding: 8px 15px;
+            background-color: #6C3483;
+            color: white;
+            border: none;
+            cursor: pointer;
+            border-radius: 3px;
+            font-weight: 600;
+            margin-top: 20px;
+        }
+        .refresh-btn:hover {
+            background-color: #5B2C6F;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Nutanix Flow Network Security Statistics</h1>
+        
+        <div class="nav-links">
+            <a href="/">Logs</a>
+            <a href="/analytics">Analytics</a>
+            <a href="/statistics" class="active">Statistics</a>
+        </div>
+        
+        <div id="loading" class="loading">Loading statistics...</div>
+        
+        <div id="stats-content" style="display: none;">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Database Size</h3>
+                    <div class="stat-value" id="database-size">-</div>
+                    <div class="stat-label">Total database size</div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Table Size</h3>
+                    <div class="stat-value" id="table-size">-</div>
+                    <div class="stat-label">fns_logs table size</div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Total Records</h3>
+                    <div class="stat-value" id="total-records">-</div>
+                    <div class="stat-label">Records within retention period</div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Avg per Minute</h3>
+                    <div class="stat-value" id="avg-minute">-</div>
+                    <div class="stat-label">Average records per minute</div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Avg per Hour</h3>
+                    <div class="stat-value" id="avg-hour">-</div>
+                    <div class="stat-label">Average records per hour</div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Avg per Day</h3>
+                    <div class="stat-value" id="avg-day">-</div>
+                    <div class="stat-label">Average records per day</div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Avg per Week</h3>
+                    <div class="stat-value" id="avg-week">-</div>
+                    <div class="stat-label">Average records per week</div>
+                </div>
+                
+                <div class="stat-card">
+                    <h3>Avg per Month</h3>
+                    <div class="stat-value" id="avg-month">-</div>
+                    <div class="stat-label">Average records per month</div>
+                </div>
+            </div>
+            
+            <div class="info-section">
+                <h2>Database Information</h2>
+                <div class="info-row">
+                    <span class="info-label">Retention Period:</span>
+                    <span class="info-value" id="retention-days">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Cutoff Date (UTC):</span>
+                    <span class="info-value" id="cutoff-date">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Oldest Record (UTC):</span>
+                    <span class="info-value" id="oldest-timestamp">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Newest Record (UTC):</span>
+                    <span class="info-value" id="newest-timestamp">-</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Table Rows (estimated):</span>
+                    <span class="info-value" id="table-rows">-</span>
+                </div>
+            </div>
+            
+            <button class="refresh-btn" onclick="loadStatistics()">Refresh Statistics</button>
+        </div>
+    </div>
+
+    <script>
+        function formatNumber(num) {
+            if (num === null || num === undefined) return '-';
+            if (num >= 1000000) {
+                return (num / 1000000).toFixed(2) + 'M';
+            } else if (num >= 1000) {
+                return (num / 1000).toFixed(2) + 'K';
+            }
+            return num.toLocaleString();
+        }
+
+        function formatBytes(bytes) {
+            if (bytes === null || bytes === undefined) return '-';
+            if (bytes >= 1024 * 1024) {
+                return (bytes / (1024 * 1024)).toFixed(2) + ' GB';
+            } else if (bytes >= 1024) {
+                return (bytes / 1024).toFixed(2) + ' MB';
+            }
+            return bytes.toFixed(2) + ' KB';
+        }
+
+        async function loadStatistics() {
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('stats-content').style.display = 'none';
+            
+            try {
+                const response = await fetch('/api/statistics');
+                const data = await response.json();
+                
+                // Update stat cards
+                document.getElementById('database-size').textContent = data.database_size_mb.toFixed(2) + ' MB';
+                document.getElementById('table-size').textContent = data.table_size_mb.toFixed(2) + ' MB';
+                document.getElementById('total-records').textContent = formatNumber(data.total_records);
+                document.getElementById('avg-minute').textContent = formatNumber(data.avg_per_minute);
+                document.getElementById('avg-hour').textContent = formatNumber(data.avg_per_hour);
+                document.getElementById('avg-day').textContent = formatNumber(data.avg_per_day);
+                document.getElementById('avg-week').textContent = formatNumber(data.avg_per_week);
+                document.getElementById('avg-month').textContent = formatNumber(data.avg_per_month);
+                
+                // Update info section
+                document.getElementById('retention-days').textContent = data.retention_days + ' days';
+                document.getElementById('cutoff-date').textContent = data.cutoff_date || 'N/A';
+                document.getElementById('oldest-timestamp').textContent = data.oldest_timestamp || 'N/A';
+                document.getElementById('newest-timestamp').textContent = data.newest_timestamp || 'N/A';
+                document.getElementById('table-rows').textContent = formatNumber(data.table_rows);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('stats-content').style.display = 'block';
+            } catch (error) {
+                console.error('Error loading statistics:', error);
+                document.getElementById('loading').textContent = 'Error loading statistics. Please try again.';
+            }
+        }
+
+        // Load statistics on page load
+        window.onload = function() {
+            loadStatistics();
+        };
+    </script>
+</body>
+</html>
+

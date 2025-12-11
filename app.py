@@ -112,9 +112,21 @@ def get_logs():
     # Timezone for conversion
     target_tz = request.args.get('timezone', 'UTC')
     
-    # Pagination
-    page = int(request.args.get('page', 1))
-    per_page = int(request.args.get('per_page', 100))
+    # Pagination - validate inputs to prevent division by zero and invalid values
+    try:
+        page = int(request.args.get('page', 1))
+        if page < 1:
+            page = 1
+    except (ValueError, TypeError):
+        page = 1
+    
+    try:
+        per_page = int(request.args.get('per_page', 100))
+        if per_page < 1:
+            per_page = 100  # Default to 100 if invalid value provided
+    except (ValueError, TypeError):
+        per_page = 100
+    
     offset = (page - 1) * per_page
     
     # Valid columns for sorting (prevent SQL injection)
@@ -454,35 +466,42 @@ def get_statistics():
             
             # Calculate average records per time period (only for data within retention period)
             now = datetime.utcnow()
+            cutoff_datetime = datetime.strptime(cutoff_date_str, '%Y-%m-%d %H:%M:%S')
             
             # Average per minute (last hour)
             hour_ago = now - timedelta(hours=1)
+            # Use the more recent of the two dates (retention cutoff or time period start)
+            period_start = max(cutoff_datetime, hour_ago)
             cursor.execute("""
                 SELECT COUNT(*) as count 
                 FROM fns_logs 
-                WHERE received_timestamp >= %s AND received_timestamp >= %s
-            """, (cutoff_date_str, hour_ago.strftime('%Y-%m-%d %H:%M:%S')))
+                WHERE received_timestamp >= %s
+            """, (period_start.strftime('%Y-%m-%d %H:%M:%S'),))
             hour_count = cursor.fetchone()['count']
             stats['avg_per_minute'] = round(hour_count / 60.0, 2) if hour_count > 0 else 0
             
             # Average per hour (last 24 hours)
             day_ago = now - timedelta(days=1)
+            # Use the more recent of the two dates (retention cutoff or time period start)
+            period_start = max(cutoff_datetime, day_ago)
             cursor.execute("""
                 SELECT COUNT(*) as count 
                 FROM fns_logs 
-                WHERE received_timestamp >= %s AND received_timestamp >= %s
-            """, (cutoff_date_str, day_ago.strftime('%Y-%m-%d %H:%M:%S')))
+                WHERE received_timestamp >= %s
+            """, (period_start.strftime('%Y-%m-%d %H:%M:%S'),))
             day_count = cursor.fetchone()['count']
             stats['avg_per_hour'] = round(day_count / 24.0, 2) if day_count > 0 else 0
             
             # Average per day (last 7 days, but not exceeding retention period)
             week_days = min(7, retention_days)
             week_ago = now - timedelta(days=week_days)
+            # Use the more recent of the two dates (retention cutoff or time period start)
+            period_start = max(cutoff_datetime, week_ago)
             cursor.execute("""
                 SELECT COUNT(*) as count 
                 FROM fns_logs 
-                WHERE received_timestamp >= %s AND received_timestamp >= %s
-            """, (cutoff_date_str, week_ago.strftime('%Y-%m-%d %H:%M:%S')))
+                WHERE received_timestamp >= %s
+            """, (period_start.strftime('%Y-%m-%d %H:%M:%S'),))
             week_count = cursor.fetchone()['count']
             stats['avg_per_day'] = round(week_count / float(week_days), 2) if week_count > 0 else 0
             
@@ -490,11 +509,13 @@ def get_statistics():
             month_weeks = min(4, retention_days // 7)
             if month_weeks > 0:
                 month_weeks_ago = now - timedelta(weeks=month_weeks)
+                # Use the more recent of the two dates (retention cutoff or time period start)
+                period_start = max(cutoff_datetime, month_weeks_ago)
                 cursor.execute("""
                     SELECT COUNT(*) as count 
                     FROM fns_logs 
-                    WHERE received_timestamp >= %s AND received_timestamp >= %s
-                """, (cutoff_date_str, month_weeks_ago.strftime('%Y-%m-%d %H:%M:%S')))
+                    WHERE received_timestamp >= %s
+                """, (period_start.strftime('%Y-%m-%d %H:%M:%S'),))
                 month_weeks_count = cursor.fetchone()['count']
                 stats['avg_per_week'] = round(month_weeks_count / float(month_weeks), 2) if month_weeks_count > 0 else 0
             else:

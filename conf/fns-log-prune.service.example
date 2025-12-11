@@ -1,0 +1,12 @@
+[Unit]
+Description=FNS Log Pruning Service
+After=network.target mysql.service
+
+[Service]
+Type=oneshot
+User=your-user
+WorkingDirectory=/path/to/fns-log-viewer
+ExecStart=/path/to/fns-log-viewer/bin/python3 /path/to/fns-log-viewer/prune_logs.py
+StandardOutput=journal
+StandardError=journal
+

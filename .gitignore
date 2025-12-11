@@ -4,3 +4,6 @@ lib
 pyvenv.cfg
 pyvenv/
 __pycache__/
+.env
+*.env
+!.env.example

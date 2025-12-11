@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FNS Logs Viewer</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * {
+            font-family: 'Montserrat', sans-serif;
+        }
+        body {
+            margin: 20px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+            font-size: 12px;
+        }
+        th {
+            background-color: #5c2fcb;
+            color: white;
+            cursor: pointer;
+            user-select: none;
+            font-weight: 600;
+        }
+        th:hover {
+            background-color: #5B2C6F;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        .filters {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .filters-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            user-select: none;
+        }
+        .filters-header h3 {
+            margin: 0;
+            color: #5c2fcb;
+        }
+        .toggle-icon {
+            font-size: 20px;
+            color: #6C3483;
+            font-weight: bold;
+        }
+        .filters-content {
+            margin-top: 15px;
+        }
+        .filters-content.collapsed {
+            display: none;
+        }
+        .filter-row {
+            margin: 10px 0;
+        }
+        .filter-row label {
+            display: inline-block;
+            width: 140px;
+            font-weight: 600;
+        }
+        .filter-row input, .filter-row select {
+            width: 200px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+        button {
+            padding: 8px 15px;
+            background-color: #6C3483;
+            color: white;
+            border: none;
+            cursor: pointer;
+            margin: 5px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+        button:hover {
+            background-color: #5B2C6F;
+        }
+        button:disabled {
+            background-color: #ccc;
+            cursor: not-allowed;
+        }
+        .pagination {
+            margin: 20px 0;
+            text-align: center;
+        }
+        .pagination button {
+            margin: 0 5px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            font-size: 18px;
+            color: #666;
+        }
+        .sort-indicator {
+            font-size: 10px;
+            margin-left: 5px;
+        }
+        .timezone-selector {
+            margin: 15px 0;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 3px;
+            border: 1px solid #ddd;
+        }
+        .timezone-selector label {
+            font-weight: 600;
+            margin-right: 10px;
+        }
+        .timezone-selector select {
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Nutanix Flow Network Security Logs</h1>
+    
+    <div style="margin: 20px 0;">
+        <a href="/" style="padding: 10px 20px; background-color: #6C3483; color: white; text-decoration: none; border-radius: 3px; font-weight: 600; margin-right: 10px;">Logs</a>
+        <a href="/analytics" style="padding: 10px 20px; background-color: #f5f5f5; color: #6C3483; text-decoration: none; border-radius: 3px; font-weight: 600; border: 2px solid #6C3483; margin-right: 10px;">Analytics</a>
+        <a href="/statistics" style="padding: 10px 20px; background-color: #f5f5f5; color: #6C3483; text-decoration: none; border-radius: 3px; font-weight: 600; border: 2px solid #6C3483;">Statistics</a>
+    </div>
+    
+    <div class="timezone-selector">
+        <label>Display Timezone:</label>
+        <select id="timezone" onchange="applyFilters()">
+            {% for tz in timezones %}
+            <option value="{{ tz }}" {% if tz == 'UTC' %}selected{% endif %}>{{ tz }}</option>
+            {% endfor %}
+        </select>
+        <small style="color: #666; margin-left: 10px;">Times are stored in UTC and converted to selected timezone</small>
+    </div>
+    
+    <div class="filters">
+        <div class="filters-header" onclick="toggleFilters()">
+            <h3>Filters</h3>
+            <span class="toggle-icon" id="toggle-icon">+</span>
+        </div>
+        <div class="filters-content collapsed" id="filters-content">
+            <div class="filter-row">
+                <label>Start Time (UTC):</label>
+                <input type="datetime-local" id="start_time" placeholder="Start time">
+            </div>
+            <div class="filter-row">
+                <label>End Time (UTC):</label>
+                <input type="datetime-local" id="end_time" placeholder="End time">
+            </div>
+            <div class="filter-row">
+                <label>Hostname:</label>
+                <input type="text" id="hostname" placeholder="Filter by hostname">
+            </div>
+            <div class="filter-row">
+                <label>Source IP:</label>
+                <input type="text" id="source" placeholder="Filter by source IP">
+            </div>
+            <div class="filter-row">
+                <label>Destination IP:</label>
+                <input type="text" id="destination" placeholder="Filter by destination IP">
+            </div>
+            <div class="filter-row">
+                <label>Action:</label>
+                <select id="action">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div class="filter-row">
+                <label>Protocol:</label>
+                <select id="protocol">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div class="filter-row">
+                <label>Rule Name:</label>
+                <select id="rule_name">
+                    <option value="">All</option>
+                </select>
+            </div>
+            <div class="filter-row">
+                <button onclick="applyFilters()">Apply Filters</button>
+                <button onclick="clearFilters()">Clear Filters</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="stats"></div>
+    
+    <div class="pagination" id="pagination-top"></div>
+    
+    <div id="loading" class="loading" style="display: none;">Loading...</div>
+    
+    <table id="logsTable">
+        <thead>
+            <tr>
+                <th onclick="sortTable('id')">ID <span class="sort-indicator" id="sort-id"></span></th>
+                <th onclick="sortTable('event_timestamp')">Event Time <span class="sort-indicator" id="sort-event_timestamp"></span></th>
+                <th onclick="sortTable('hostname')">Hostname <span class="sort-indicator" id="sort-hostname"></span></th>
+                <th onclick="sortTable('rule_name')">Rule Name <span class="sort-indicator" id="sort-rule_name"></span></th>
+                <th onclick="sortTable('event_type')">Event Type <span class="sort-indicator" id="sort-event_type"></span></th>
+                <th onclick="sortTable('source')">Source <span class="sort-indicator" id="sort-source"></span></th>
+                <th onclick="sortTable('destination')">Destination <span class="sort-indicator" id="sort-destination"></span></th>
+                <th onclick="sortTable('protocol')">Protocol <span class="sort-indicator" id="sort-protocol"></span></th>
+                <th onclick="sortTable('source_port')">Src Port <span class="sort-indicator" id="sort-source_port"></span></th>
+                <th onclick="sortTable('destination_port')">Dst Port <span class="sort-indicator" id="sort-destination_port"></span></th>
+                <th onclick="sortTable('action')">Action <span class="sort-indicator" id="sort-action"></span></th>
+                <th onclick="sortTable('direction')">Direction <span class="sort-indicator" id="sort-direction"></span></th>
+                <th onclick="sortTable('originator_packets')">Orig Pkts <span class="sort-indicator" id="sort-originator_packets"></span></th>
+                <th onclick="sortTable('originator_bytes')">Orig Bytes <span class="sort-indicator" id="sort-originator_bytes"></span></th>
+                <th onclick="sortTable('reply_packets')">Reply Pkts <span class="sort-indicator" id="sort-reply_packets"></span></th>
+                <th onclick="sortTable('reply_bytes')">Reply Bytes <span class="sort-indicator" id="sort-reply_bytes"></span></th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody id="logsBody">
+        </tbody>
+    </table>
+    
+    <div class="pagination" id="pagination-bottom"></div>
+
+    <script>
+        let currentSort = 'received_timestamp';
+        let currentOrder = 'DESC';
+        let currentPage = 1;
+        let totalPages = 1;
+
+        function toggleFilters() {
+            const content = document.getElementById('filters-content');
+            const icon = document.getElementById('toggle-icon');
+            
+            if (content.classList.contains('collapsed')) {
+                content.classList.remove('collapsed');
+                icon.textContent = '−';
+            } else {
+                content.classList.add('collapsed');
+                icon.textContent = '+';
+            }
+        }
+
+        // Load filter options on page load
+        async function loadFilterOptions() {
+            try {
+                const response = await fetch('/api/filter_options');
+                const options = await response.json();
+                
+                // Populate action dropdown
+                const actionSelect = document.getElementById('action');
+                options.actions.forEach(action => {
+                    const option = document.createElement('option');
+                    option.value = action;
+                    option.textContent = action;
+                    actionSelect.appendChild(option);
+                });
+                
+                // Populate protocol dropdown
+                const protocolSelect = document.getElementById('protocol');
+                options.protocols.forEach(protocol => {
+                    const option = document.createElement('option');
+                    option.value = protocol;
+                    option.textContent = protocol;
+                    protocolSelect.appendChild(option);
+                });
+                
+                // Populate rule name dropdown
+                const ruleNameSelect = document.getElementById('rule_name');
+                options.rule_names.forEach(rule => {
+                    const option = document.createElement('option');
+                    option.value = rule;
+                    option.textContent = rule;
+                    ruleNameSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading filter options:', error);
+            }
+        }
+
+        async function loadLogs() {
+            document.getElementById('loading').style.display = 'block';
+            
+            // Build query parameters
+            const params = new URLSearchParams({
+                sort: currentSort,
+                order: currentOrder,
+                page: currentPage,
+                per_page: 100
+            });
+            
+            // Add filters - input sanitization is handled server-side with parameterized queries
+            const hostname = document.getElementById('hostname').value.trim();
+            const source = document.getElementById('source').value.trim();
+            const destination = document.getElementById('destination').value.trim();
+            const action = document.getElementById('action').value;
+            const protocol = document.getElementById('protocol').value;
+            const rule_name = document.getElementById('rule_name').value;
+            const start_time = document.getElementById('start_time').value;
+            const end_time = document.getElementById('end_time').value;
+            const timezone = document.getElementById('timezone').value;
+            
+            if (hostname) params.append('hostname', hostname);
+            if (source) params.append('source', source);
+            if (destination) params.append('destination', destination);
+            if (action) params.append('action', action);
+            if (protocol) params.append('protocol', protocol);
+            if (rule_name) params.append('rule_name', rule_name);
+            if (start_time) params.append('start_time', start_time);
+            if (end_time) params.append('end_time', end_time);
+            if (timezone) params.append('timezone', timezone);
+            
+            try {
+                const response = await fetch('/api/logs?' + params.toString());
+                const data = await response.json();
+                
+                displayLogs(data.logs);
+                updatePagination(data.page, data.total_pages, data.total);
+                updateSortIndicators();
+                
+                document.getElementById('loading').style.display = 'none';
+            } catch (error) {
+                console.error('Error loading logs:', error);
+                document.getElementById('loading').style.display = 'none';
+            }
+        }
+
+        function displayLogs(logs) {
+            const tbody = document.getElementById('logsBody');
+            tbody.innerHTML = '';
+            
+            logs.forEach(log => {
+                const row = tbody.insertRow();
+                row.insertCell(0).textContent = log.id;
+                row.insertCell(1).textContent = log.event_timestamp;
+                row.insertCell(2).textContent = log.hostname;
+                row.insertCell(3).textContent = log.rule_name;
+                row.insertCell(4).textContent = log.event_type;
+                row.insertCell(5).textContent = log.source;
+                row.insertCell(6).textContent = log.destination;
+                row.insertCell(7).textContent = log.protocol;
+                row.insertCell(8).textContent = log.source_port;
+                row.insertCell(9).textContent = log.destination_port;
+                row.insertCell(10).textContent = log.action;
+                row.insertCell(11).textContent = log.direction;
+                row.insertCell(12).textContent = log.originator_packets;
+                row.insertCell(13).textContent = log.originator_bytes;
+                row.insertCell(14).textContent = log.reply_packets;
+                row.insertCell(15).textContent = log.reply_bytes;
+                row.insertCell(16).textContent = log.description || '';
+            });
+        }
+
+        function updatePagination(page, total, totalRecords) {
+            currentPage = page;
+            totalPages = total;
+            
+            const paginationHTML = `
+                <button onclick="goToPage(1)" ${page === 1 ? 'disabled' : ''}>First</button>
+                <button onclick="goToPage(${page - 1})" ${page === 1 ? 'disabled' : ''}>Previous</button>
+                <span style="margin: 0 15px; font-weight: 600;">Page ${page} of ${total} (${totalRecords} total records)</span>
+                <button onclick="goToPage(${page + 1})" ${page === total ? 'disabled' : ''}>Next</button>
+                <button onclick="goToPage(${total})" ${page === total ? 'disabled' : ''}>Last</button>
+            `;
+            
+            document.getElementById('pagination-top').innerHTML = paginationHTML;
+            document.getElementById('pagination-bottom').innerHTML = paginationHTML;
+        }
+
+        function updateSortIndicators() {
+            // Clear all indicators
+            document.querySelectorAll('.sort-indicator').forEach(el => el.textContent = '');
+            
+            // Set current sort indicator
+            const indicator = document.getElementById('sort-' + currentSort);
+            if (indicator) {
+                indicator.textContent = currentOrder === 'ASC' ? '▲' : '▼';
+            }
+        }
+
+        function sortTable(column) {
+            if (currentSort === column) {
+                currentOrder = currentOrder === 'ASC' ? 'DESC' : 'ASC';
+            } else {
+                currentSort = column;
+                currentOrder = 'DESC';
+            }
+            currentPage = 1;
+            loadLogs();
+        }
+
+        function goToPage(page) {
+            if (page >= 1 && page <= totalPages) {
+                currentPage = page;
+                loadLogs();
+            }
+        }
+
+        function applyFilters() {
+            currentPage = 1;
+            loadLogs();
+        }
+
+        function clearFilters() {
+            document.getElementById('hostname').value = '';
+            document.getElementById('source').value = '';
+            document.getElementById('destination').value = '';
+            document.getElementById('action').value = '';
+            document.getElementById('protocol').value = '';
+            document.getElementById('rule_name').value = '';
+            document.getElementById('start_time').value = '';
+            document.getElementById('end_time').value = '';
+            document.getElementById('timezone').value = 'UTC';
+            currentPage = 1;
+            loadLogs();
+        }
+
+        // Load data on page load
+        window.onload = function() {
+            loadFilterOptions();
+            loadLogs();
+        };
+    </script>
+</body>
+</html>
