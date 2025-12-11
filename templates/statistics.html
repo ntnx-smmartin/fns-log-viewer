@@ -218,9 +218,11 @@
                     throw new Error(data.error);
                 }
                 
-                // Update stat cards
-                document.getElementById('database-size').textContent = (data.database_size_mb || 0).toFixed(2) + ' MB';
-                document.getElementById('table-size').textContent = (data.table_size_mb || 0).toFixed(2) + ' MB';
+                // Update stat cards - ensure values are numbers before calling toFixed
+                const dbSize = Number(data.database_size_mb) || 0;
+                const tableSize = Number(data.table_size_mb) || 0;
+                document.getElementById('database-size').textContent = dbSize.toFixed(2) + ' MB';
+                document.getElementById('table-size').textContent = tableSize.toFixed(2) + ' MB';
                 document.getElementById('total-records').textContent = formatNumber(data.total_records || 0);
                 document.getElementById('avg-minute').textContent = formatNumber(data.avg_per_minute || 0);
                 document.getElementById('avg-hour').textContent = formatNumber(data.avg_per_hour || 0);
